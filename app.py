@@ -46,23 +46,74 @@ def download_video(url):
         'quiet': False,  # Changed to False to see download progress
         'no_warnings': False,  # Changed to False to see warnings
         'nooverwrites': False,  # Ensure we don't skip downloads due to cache
+        # Anti-bot measures
+        'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'referer': 'https://www.youtube.com/',
+        'http_headers': {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+            'Accept-Language': 'en-us,en;q=0.5',
+            'Sec-Fetch-Mode': 'navigate',
+        },
+        # Retry and timeout settings
+        'retries': 3,
+        'fragment_retries': 3,
+        'retry_sleep_functions': {
+            'http': lambda n: min(60, 2 ** n),
+            'fragment': lambda n: min(60, 2 ** n),
+        },
+        'extractor_retries': 3,
+        'socket_timeout': 30,
+        # Additional options to avoid detection
+        'nocheckcertificate': True,
+        'ignoreerrors': False,
+        'logtostderr': False,
+        'sleep_interval': 1,
+        'max_sleep_interval': 5,
     }
 
-    try:
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            ydl.download([url])
+    # Try different download strategies
+    download_strategies = [
+        ydl_opts,  # Default configuration
+        {**ydl_opts, 'format': '18/22/37/38', 'extract_flat': False},  # Specific format codes
+        {**ydl_opts, 'cookiesfrombrowser': None, 'ignoreerrors': True},  # Try without cookies
+    ]
 
-        # Verify the file was downloaded and has content
-        if os.path.exists(temp_video.name) and os.path.getsize(temp_video.name) > 0:
-            return temp_video.name
-        else:
-            raise Exception("Downloaded file is empty or doesn't exist")
+    last_error = None
+    for attempt, strategy in enumerate(download_strategies):
+        try:
+            st.info(f"Download attempt {attempt + 1}/3...")
+            with yt_dlp.YoutubeDL(strategy) as ydl:
+                ydl.download([url])
 
-    except Exception as e:
-        # Clean up the temp file if download failed
-        if os.path.exists(temp_video.name):
-            os.unlink(temp_video.name)
-        raise Exception(f"Download failed: {str(e)}")
+            # Verify the file was downloaded and has content
+            if os.path.exists(temp_video.name) and os.path.getsize(temp_video.name) > 0:
+                st.success(f"Download successful on attempt {attempt + 1}")
+                return temp_video.name
+            else:
+                raise Exception("Downloaded file is empty or doesn't exist")
+
+        except Exception as e:
+            last_error = e
+            st.warning(f"Attempt {attempt + 1} failed: {str(e)}")
+
+            # Clean up failed download
+            if os.path.exists(temp_video.name):
+                try:
+                    os.unlink(temp_video.name)
+                except:
+                    pass
+
+            # Don't retry on the last attempt
+            if attempt < len(download_strategies) - 1:
+                # Wait before retrying with increasing delay
+                wait_time = min(30, 5 * (attempt + 1))
+                st.info(f"Waiting {wait_time} seconds before retry...")
+                time.sleep(wait_time)
+            continue
+
+    # All attempts failed
+    raise Exception(f"All download attempts failed. Last error: {str(last_error)}")
 
 def is_valid_url(url):
     """Check if URL is from supported platforms"""
