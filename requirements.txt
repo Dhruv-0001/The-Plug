@@ -1,0 +1,8 @@
+streamlit
+phidata
+google-generativeai
+python-dotenv
+pathlib
+requests
+duckduckgo-search
+yt-dlp
