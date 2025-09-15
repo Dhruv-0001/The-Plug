@@ -14,7 +14,12 @@ import re
 
 load_dotenv()
 
-API_KEY = os.getenv("GOOGLE_API_KEY")
+# Load API key from Streamlit secrets (for cloud) or environment variables (for local)
+if hasattr(st, 'secrets') and 'GOOGLE_API_KEY' in st.secrets:
+    API_KEY = st.secrets["GOOGLE_API_KEY"]
+else:
+    API_KEY = os.getenv("GOOGLE_API_KEY")
+
 if API_KEY:
     genai.configure(api_key=API_KEY)
 
@@ -36,44 +41,35 @@ def initialize_agent():
     )
 
 def download_video(url):
-    """Download video from URL using yt-dlp"""
+    """Download video from URL using yt-dlp with cloud-friendly settings"""
     temp_video = tempfile.NamedTemporaryFile(delete=False, suffix='.mp4')
     temp_video.close()  # Close the file handle so yt-dlp can write to it
 
+    # Check if running in cloud environment
+    is_cloud = 'streamlit.io' in os.environ.get('STREAMLIT_SERVER_BASE_URL_PATH', '')
+    
+    # Cloud-optimized settings
     ydl_opts = {
         'outtmpl': temp_video.name,
-        'format': 'best[ext=mp4]/best',
-        'quiet': False,  # Changed to False to see download progress
-        'no_warnings': False,  # Changed to False to see warnings
-        'nooverwrites': False,  # Ensure we don't skip downloads due to cache
-        # Anti-bot measures
-        'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'referer': 'https://www.youtube.com/',
-        'http_headers': {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-            'Accept-Language': 'en-us,en;q=0.5',
-            'Sec-Fetch-Mode': 'navigate',
-        },
-        # Retry and timeout settings
-        'retries': 3,
-        'fragment_retries': 3,
-        'retry_sleep_functions': {
-            'http': lambda n: min(60, 2 ** n),
-            'fragment': lambda n: min(60, 2 ** n),
-        },
-        'extractor_retries': 3,
-        'socket_timeout': 30,
-        # Additional options to avoid detection
+        'format': 'best[filesize<50M]/worst' if is_cloud else 'best[ext=mp4]/best',
+        'quiet': is_cloud,  # Quieter in cloud to avoid timeout
+        'no_warnings': is_cloud,
+        'nooverwrites': False,
+        # Simplified headers for cloud compatibility
+        'user_agent': 'Mozilla/5.0 (compatible; StreamlitApp/1.0)',
+        # Reduced timeout settings for cloud
+        'retries': 1 if is_cloud else 3,
+        'fragment_retries': 1 if is_cloud else 3,
+        'extractor_retries': 1 if is_cloud else 3,
+        'socket_timeout': 20 if is_cloud else 30,
+        # Cloud-friendly options
         'nocheckcertificate': True,
         'ignoreerrors': False,
         'logtostderr': False,
-        'sleep_interval': 1,
-        'max_sleep_interval': 5,
     }
 
-    # Try different download strategies
-    download_strategies = [
+    # Simplified strategy for cloud compatibility
+    download_strategies = [ydl_opts] if is_cloud else [
         ydl_opts,  # Default configuration
         {**ydl_opts, 'format': '18/22/37/38', 'extract_flat': False},  # Specific format codes
         {**ydl_opts, 'cookiesfrombrowser': None, 'ignoreerrors': True},  # Try without cookies
@@ -82,20 +78,27 @@ def download_video(url):
     last_error = None
     for attempt, strategy in enumerate(download_strategies):
         try:
-            st.info(f"Download attempt {attempt + 1}/3...")
             with yt_dlp.YoutubeDL(strategy) as ydl:
                 ydl.download([url])
 
             # Verify the file was downloaded and has content
             if os.path.exists(temp_video.name) and os.path.getsize(temp_video.name) > 0:
-                st.success(f"Download successful on attempt {attempt + 1}")
+                file_size_mb = os.path.getsize(temp_video.name) / (1024 * 1024)
+                
+                # Check file size limits for cloud
+                max_size = 50 if is_cloud else 200
+                if file_size_mb > max_size:
+                    os.unlink(temp_video.name)
+                    raise Exception(f"Video too large ({file_size_mb:.1f}MB). Please use a smaller video.")
+                
                 return temp_video.name
             else:
                 raise Exception("Downloaded file is empty or doesn't exist")
 
         except Exception as e:
             last_error = e
-            st.warning(f"Attempt {attempt + 1} failed: {str(e)}")
+            if not is_cloud:  # Only show warnings in local mode
+                st.warning(f"Attempt {attempt + 1} failed: {str(e)}")
 
             # Clean up failed download
             if os.path.exists(temp_video.name):
@@ -104,16 +107,16 @@ def download_video(url):
                 except:
                     pass
 
-            # Don't retry on the last attempt
+            # Simplified retry logic for cloud
             if attempt < len(download_strategies) - 1:
-                # Wait before retrying with increasing delay
-                wait_time = min(30, 5 * (attempt + 1))
-                st.info(f"Waiting {wait_time} seconds before retry...")
+                wait_time = 5 if is_cloud else min(30, 5 * (attempt + 1))
+                if not is_cloud:
+                    st.info(f"Waiting {wait_time} seconds before retry...")
                 time.sleep(wait_time)
             continue
 
     # All attempts failed
-    raise Exception(f"All download attempts failed. Last error: {str(last_error)}")
+    raise Exception(f"Download failed. Last error: {str(last_error)}")
 
 def is_valid_url(url):
     """Check if URL is from supported platforms"""
@@ -221,7 +224,7 @@ if st.session_state.current_page == "upload":
                         Path(st.session_state.video_path).unlink(missing_ok=True)
 
                     try:
-                        with st.spinner("Downloading video..."):
+                        with st.spinner("In silences like this, I generally crack a joke on global warming. Do you know why? because it's an ice breaker."):
                             st.session_state.video_path = download_video(video_url)
                             st.session_state.current_video_url = video_url
                             st.session_state.current_video_file = None  # Reset file cache
@@ -266,7 +269,7 @@ elif st.session_state.current_page == "chat":
             for i, (query, response) in enumerate(st.session_state.chat_history):
                 with st.container():
                     st.markdown(f"**You:** {query}")
-                    st.markdown(f"**AI:** {response}")
+                    st.markdown(f"**The Plug:** {response}")
                     st.divider()
 
         # Chat input
@@ -294,7 +297,7 @@ elif st.session_state.current_page == "chat":
                         # Prompt generation for analysis
                         analysis_prompt = (
                             f"""
-                            You are an expert video analyst. Analyze the uploaded video and respond to this query:
+                            You are an expert video analyzer. Analyze the uploaded video and respond to this query:
 
                             Query: {user_query}
 
@@ -305,6 +308,8 @@ elif st.session_state.current_page == "chat":
                             4. Actionable takeaways
 
                             Be conversational and engaging while being thorough and accurate.
+                            Speak casually, humble and naturally. 
+                            Keep responses short and concise
                             """
                         )
 

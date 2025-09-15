@@ -1,8 +1,8 @@
-streamlit
-phidata
-google-generativeai
-python-dotenv
-pathlib
-requests
-duckduckgo-search
-yt-dlp
+streamlit>=1.28.0
+phidata>=2.4.0
+google-generativeai>=0.3.0
+python-dotenv>=1.0.0
+requests>=2.31.0
+duckduckgo-search>=4.0.0
+yt-dlp>=2023.12.30
+Pillow>=10.0.0

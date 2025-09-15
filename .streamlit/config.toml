@@ -1,0 +1,25 @@
+[global]
+# Streamlit configuration for cloud deployment
+
+[server]
+# Maximum file upload size (500MB)
+maxUploadSize = 500
+# Enable CORS for all origins
+enableCORS = false
+# Enable xsrf protection
+enableXsrfProtection = true
+
+[browser]
+# Don't automatically open browser on local runs
+gatherUsageStats = false
+
+[theme]
+# App theme settings
+primaryColor = "#FF6B6B"
+backgroundColor = "#0E1117"
+secondaryBackgroundColor = "#262730"
+textColor = "#FAFAFA"
+
+[client]
+# Client configuration
+showErrorDetails = false
