@@ -31,6 +31,10 @@ st.set_page_config(
 
 st.title("The Plug")
 
+# Check if running on Streamlit Cloud and show helpful banner
+if 'streamlit.io' in os.environ.get('STREAMLIT_SERVER_BASE_URL_PATH', ''):
+    st.info("🌥️ **Running on Streamlit Cloud**: For best results, upload video files directly. URL downloads may be blocked by some platforms.", icon="ℹ️")
+
 @st.cache_resource
 def initialize_agent():
     return Agent(
@@ -205,6 +209,10 @@ if st.session_state.current_page == "upload":
             video_path = st.session_state.video_path
 
     else:  # Paste Video Link
+        # Show cloud-specific guidance
+        if 'streamlit.io' in os.environ.get('STREAMLIT_SERVER_BASE_URL_PATH', ''):
+            st.warning("⚠️ **Cloud Limitation**: Video downloads may be blocked. If download fails, please use the file upload option above.")
+        
         # URL input
         video_url = st.text_input(
             "Paste video link",
@@ -223,15 +231,53 @@ if st.session_state.current_page == "upload":
                     if st.session_state.video_path and os.path.exists(st.session_state.video_path):
                         Path(st.session_state.video_path).unlink(missing_ok=True)
 
-                    try:
-                        with st.spinner("In silences like this, I generally crack a joke on global warming. Do you know why? because it's an ice breaker."):
-                            st.session_state.video_path = download_video(video_url)
-                            st.session_state.current_video_url = video_url
-                            st.session_state.current_video_file = None  # Reset file cache
-                    except Exception as e:
-                        st.error(f"Error downloading video: {e}")
-                        st.session_state.video_path = None
-                        st.session_state.current_video_url = None
+                        try:
+                            with st.spinner("Downloading video... This may take a moment."):
+                                st.session_state.video_path = download_video(video_url)
+                                st.session_state.current_video_url = video_url
+                                st.session_state.current_video_file = None  # Reset file cache
+                                st.success("✅ Video downloaded successfully!")
+                        except Exception as e:
+                            st.error(f"❌ Download failed: {str(e)}")
+                            
+                            # Show helpful message for cloud deployment
+                            if "403" in str(e) or "Forbidden" in str(e):
+                                st.warning("🚫 **Download Blocked**: The video platform is blocking automated downloads.")
+                                st.info("💡 **Alternative Solutions:**\n"
+                                       "1. **Download the video manually** and upload it using the file uploader above\n"
+                                       "2. **Try a different video** - some videos are more restricted than others\n"
+                                       "3. **Use shorter videos** - they're less likely to be blocked")
+                                
+                                with st.expander("📖 Need help downloading videos manually?"):
+                                    st.markdown("""
+                                    **Quick Solutions:**
+                                    
+                                    **Browser Extensions (Easiest):**
+                                    - Chrome: "Video DownloadHelper" or "SaveFrom.net Helper"
+                                    - Firefox: "Video DownloadHelper"
+                                    
+                                    **Online Tools:**
+                                    - [y2mate.com](https://y2mate.com) for YouTube
+                                    - [savefrom.net](https://savefrom.net) for multiple platforms
+                                    - [snaptik.app](https://snaptik.app) for TikTok
+                                    
+                                    **Steps:**
+                                    1. Use any of the above tools to download the video
+                                    2. Come back here and choose "Upload Video File"
+                                    3. Select your downloaded video file
+                                    
+                                    💡 **Tip**: Choose smaller file sizes (720p or lower) for faster uploads!
+                                    """)
+                            elif "too large" in str(e).lower():
+                                st.info("📁 **File Too Large**: Try using a shorter video or upload the file directly.")
+                            else:
+                                st.info("🔄 **Troubleshooting Tips:**\n"
+                                       "- Try a different video URL\n"
+                                       "- Use the file upload option instead\n"
+                                       "- Ensure the video is publicly accessible")
+                            
+                            st.session_state.video_path = None
+                            st.session_state.current_video_url = None
 
                 video_path = st.session_state.video_path
             else:
