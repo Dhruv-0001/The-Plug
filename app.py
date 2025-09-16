@@ -14,7 +14,7 @@ import re
 
 load_dotenv()
 
-# Load API key from Streamlit secrets (for cloud) or environment variables (for local)
+# Load the API key from Streamlit secrets (for cloud) or environment variables (for local)
 if hasattr(st, 'secrets') and 'GOOGLE_API_KEY' in st.secrets:
     API_KEY = st.secrets["GOOGLE_API_KEY"]
 else:
