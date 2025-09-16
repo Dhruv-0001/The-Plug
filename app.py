@@ -166,13 +166,14 @@ def cleanup_video_cache():
 # Page routing based on current state
 if st.session_state.current_page == "upload":
     # UPLOAD PAGE
-    st.subheader("Upload Your Video")
+    # st.subheader("Upload Your Video")
 
     # Input method selection
     input_method = st.radio(
         "Choose how to provide your video:",
-        ["Upload Video File", "Paste Video Link"],
-        help="Select how you want to provide the video for analysis"
+        # ["Upload Video File", "Paste Video Link"],
+        ["Upload Video File"],
+        help="Select the video for analysis"
     )
 
     # Clean up cache if user switches input methods
@@ -208,80 +209,80 @@ if st.session_state.current_page == "upload":
 
             video_path = st.session_state.video_path
 
-    else:  # Paste Video Link
-        # Show cloud-specific guidance
-        if 'streamlit.io' in os.environ.get('STREAMLIT_SERVER_BASE_URL_PATH', ''):
-            st.warning("⚠️ **Cloud Limitation**: Video downloads may be blocked. If download fails, please use the file upload option above.")
+    # else:  # Paste Video Link
+    #     # Show cloud-specific guidance
+    #     if 'streamlit.io' in os.environ.get('STREAMLIT_SERVER_BASE_URL_PATH', ''):
+    #         st.warning("⚠️ **Cloud Limitation**: Video downloads may be blocked. If download fails, please use the file upload option above.")
         
-        # URL input
-        video_url = st.text_input(
-            "Paste video link",
-            placeholder="https://youtube.com/watch?v=... or Instagram/TikTok/X link",
-            help="Paste a video URL from YouTube, Instagram, TikTok, or X"
-        )
+    #     # URL input
+    #     video_url = st.text_input(
+    #         "Paste video link",
+    #         placeholder="https://youtube.com/watch?v=... or Instagram/TikTok/X link",
+    #         help="Paste a video URL from YouTube, Instagram, TikTok, or X"
+    #     )
 
-        if video_url:
-            if is_valid_url(video_url):
-                # Check if this is a different URL than the cached one
-                if (st.session_state.current_video_url != video_url or
-                    st.session_state.video_path is None or
-                    not os.path.exists(st.session_state.video_path)):
+    #     if video_url:
+    #         if is_valid_url(video_url):
+    #             # Check if this is a different URL than the cached one
+    #             if (st.session_state.current_video_url != video_url or
+    #                 st.session_state.video_path is None or
+    #                 not os.path.exists(st.session_state.video_path)):
 
-                    # Clean up previous video if it exists
-                    if st.session_state.video_path and os.path.exists(st.session_state.video_path):
-                        Path(st.session_state.video_path).unlink(missing_ok=True)
+    #                 # Clean up previous video if it exists
+    #                 if st.session_state.video_path and os.path.exists(st.session_state.video_path):
+    #                     Path(st.session_state.video_path).unlink(missing_ok=True)
 
-                        try:
-                            with st.spinner("Downloading video... This may take a moment."):
-                                st.session_state.video_path = download_video(video_url)
-                                st.session_state.current_video_url = video_url
-                                st.session_state.current_video_file = None  # Reset file cache
-                                st.success("✅ Video downloaded successfully!")
-                        except Exception as e:
-                            st.error(f"❌ Download failed: {str(e)}")
+    #                     try:
+    #                         with st.spinner("Downloading video... This may take a moment."):
+    #                             st.session_state.video_path = download_video(video_url)
+    #                             st.session_state.current_video_url = video_url
+    #                             st.session_state.current_video_file = None  # Reset file cache
+    #                             st.success("✅ Video downloaded successfully!")
+    #                     except Exception as e:
+    #                         st.error(f"❌ Download failed: {str(e)}")
                             
-                            # Show helpful message for cloud deployment
-                            if "403" in str(e) or "Forbidden" in str(e):
-                                st.warning("🚫 **Download Blocked**: The video platform is blocking automated downloads.")
-                                st.info("💡 **Alternative Solutions:**\n"
-                                       "1. **Download the video manually** and upload it using the file uploader above\n"
-                                       "2. **Try a different video** - some videos are more restricted than others\n"
-                                       "3. **Use shorter videos** - they're less likely to be blocked")
+    #                         # Show helpful message for cloud deployment
+    #                         if "403" in str(e) or "Forbidden" in str(e):
+    #                             st.warning("🚫 **Download Blocked**: The video platform is blocking automated downloads.")
+    #                             st.info("💡 **Alternative Solutions:**\n"
+    #                                    "1. **Download the video manually** and upload it using the file uploader above\n"
+    #                                    "2. **Try a different video** - some videos are more restricted than others\n"
+    #                                    "3. **Use shorter videos** - they're less likely to be blocked")
                                 
-                                with st.expander("📖 Need help downloading videos manually?"):
-                                    st.markdown("""
-                                    **Quick Solutions:**
+    #                             with st.expander("📖 Need help downloading videos manually?"):
+    #                                 st.markdown("""
+    #                                 **Quick Solutions:**
                                     
-                                    **Browser Extensions (Easiest):**
-                                    - Chrome: "Video DownloadHelper" or "SaveFrom.net Helper"
-                                    - Firefox: "Video DownloadHelper"
+    #                                 **Browser Extensions (Easiest):**
+    #                                 - Chrome: "Video DownloadHelper" or "SaveFrom.net Helper"
+    #                                 - Firefox: "Video DownloadHelper"
                                     
-                                    **Online Tools:**
-                                    - [y2mate.com](https://y2mate.com) for YouTube
-                                    - [savefrom.net](https://savefrom.net) for multiple platforms
-                                    - [snaptik.app](https://snaptik.app) for TikTok
+    #                                 **Online Tools:**
+    #                                 - [y2mate.com](https://y2mate.com) for YouTube
+    #                                 - [savefrom.net](https://savefrom.net) for multiple platforms
+    #                                 - [snaptik.app](https://snaptik.app) for TikTok
                                     
-                                    **Steps:**
-                                    1. Use any of the above tools to download the video
-                                    2. Come back here and choose "Upload Video File"
-                                    3. Select your downloaded video file
+    #                                 **Steps:**
+    #                                 1. Use any of the above tools to download the video
+    #                                 2. Come back here and choose "Upload Video File"
+    #                                 3. Select your downloaded video file
                                     
-                                    💡 **Tip**: Choose smaller file sizes (720p or lower) for faster uploads!
-                                    """)
-                            elif "too large" in str(e).lower():
-                                st.info("📁 **File Too Large**: Try using a shorter video or upload the file directly.")
-                            else:
-                                st.info("🔄 **Troubleshooting Tips:**\n"
-                                       "- Try a different video URL\n"
-                                       "- Use the file upload option instead\n"
-                                       "- Ensure the video is publicly accessible")
+    #                                 💡 **Tip**: Choose smaller file sizes (720p or lower) for faster uploads!
+    #                                 """)
+    #                         elif "too large" in str(e).lower():
+    #                             st.info("📁 **File Too Large**: Try using a shorter video or upload the file directly.")
+    #                         else:
+    #                             st.info("🔄 **Troubleshooting Tips:**\n"
+    #                                    "- Try a different video URL\n"
+    #                                    "- Use the file upload option instead\n"
+    #                                    "- Ensure the video is publicly accessible")
                             
-                            st.session_state.video_path = None
-                            st.session_state.current_video_url = None
+    #                         st.session_state.video_path = None
+    #                         st.session_state.current_video_url = None
 
-                video_path = st.session_state.video_path
-            else:
-                st.warning("Please enter a valid YouTube, Instagram, TikTok, or X video URL")
+    #             video_path = st.session_state.video_path
+    #         else:
+    #             st.warning("Please enter a valid YouTube, Instagram, TikTok, or X video URL")
 
     # Proceed to chat if video is loaded
     if video_path and os.path.exists(video_path) and os.path.getsize(video_path) > 0:
